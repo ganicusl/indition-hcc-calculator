@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HCC 退出回购交互测算器 V2</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; background:#f7f7f7; color:#111; margin:0; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 28px; }
+    .title { margin-bottom: 20px; }
+    .title h1 { margin: 0 0 8px; font-size: 32px; }
+    .title p { margin: 0; color:#666; line-height: 1.8; }
+    .grid { display:grid; gap:16px; }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+    .card { background:#fff; border:1px solid #e6e6e6; border-radius:18px; padding:18px; box-shadow:0 1px 6px rgba(0,0,0,0.04); }
+    .label { font-size:13px; color:#666; margin-bottom:10px; }
+    .value { font-size:28px; font-weight:700; }
+    .small { font-size:12px; color:#777; line-height:1.8; }
+    .btns { display:flex; gap:8px; flex-wrap:wrap; }
+    button { border:1px solid #ddd; background:#fff; color:#111; border-radius:12px; padding:10px 14px; cursor:pointer; }
+    button.active { background:#111; color:#fff; border-color:#111; }
+    input[type=number] { width:100%; box-sizing:border-box; padding:12px 14px; border:1px solid #ddd; border-radius:12px; font-size:18px; }
+    .section-title { font-size:20px; font-weight:700; margin:0 0 14px; }
+    .rows { display:grid; gap:10px; }
+    .row { display:flex; justify-content:space-between; gap:10px; padding-bottom:10px; border-bottom:1px solid #f0f0f0; }
+    .row:last-child { border-bottom:none; padding-bottom:0; }
+    .formula { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:13px; line-height:1.8; background:#fafafa; border:1px dashed #ddd; border-radius:12px; padding:12px; }
+    table { width:100%; border-collapse:collapse; font-size:14px; margin-bottom:18px; }
+    th, td { text-align:left; padding:10px 12px; border-bottom:1px solid #f1f1f1; }
+    thead th { background:#f2f2f2; color:#555; }
+    .subhead { font-weight:700; margin:8px 0 12px; }
+    .pill { display:inline-block; padding:4px 10px; border-radius:999px; background:#f3f3f3; font-size:12px; color:#555; }
+    .muted { color:#666; }
+    @media (max-width: 960px) {
+      .grid-3, .grid-4, .grid-2 { grid-template-columns: 1fr; }
+      .wrap { padding:16px; }
+      .title h1 { font-size:26px; }
+      .value { font-size:24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">
+      <h1>INDITION HCC 退出 / 回购交互测算器 V2</h1>
+      <p>输入 <strong>投资额</strong> 和 <strong>RevPAR</strong>，系统会自动生成 <strong>收益权份额</strong> 与 <strong>净年利润</strong>，并根据当前机制展示触发方案、应付金额和总收益。</p>
+    </div>
+
+    <div class="grid grid-3">
+      <div class="card">
+        <div class="label">测算类型</div>
+        <div class="btns">
+          <button id="mode-exit" class="active">合伙人主动退出</button>
+          <button id="mode-buyback">发起人主动回购</button>
+        </div>
+        <div class="small" style="margin-top:10px;">
+          合伙人主动退出：n = 5.25 - 0.75x<br/>
+          发起人主动回购：n = max(5.5 - 0.5x, 2.5)
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">时间节点（开业后的完整经营年数 x）</div>
+        <input id="yearInput" type="number" value="3" min="3" max="5" />
+        <div class="btns" id="yearButtons" style="margin-top:10px;"></div>
+        <div class="small" id="yearHint" style="margin-top:10px;">
+          当前模式下：合伙人主动退出仅支持第3年至第5年；发起人主动回购支持第3年至第20年。
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">投资额（万元）</div>
+        <input id="investment" type="number" value="100" />
+        <div class="btns" style="margin-top:10px;">
+          <button class="investment-btn">50</button>
+          <button class="investment-btn">100</button>
+          <button class="investment-btn">150</button>
+          <button class="investment-btn">200</button>
+          <button class="investment-btn">300</button>
+        </div>
+        <div class="small" style="margin-top:10px;">按当前机制：每 50 万元对应 1% 收益权</div>
+      </div>
+    </div>
+
+    <div class="grid grid-3" style="margin-top:16px;">
+      <div class="card">
+        <div class="label">RevPAR（元）</div>
+        <input id="revpar" type="number" value="600" />
+        <div class="btns" style="margin-top:10px;">
+          <button class="revpar-btn">500</button>
+          <button class="revpar-btn">550</button>
+          <button class="revpar-btn">600</button>
+          <button class="revpar-btn">650</button>
+          <button class="revpar-btn">700</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">收益权份额</div>
+        <div class="value" id="stakePercent">2%</div>
+        <div class="small">根据投资额自动换算</div>
+      </div>
+
+      <div class="card">
+        <div class="label">自动生成净年利润</div>
+        <div class="value" id="annualProfit">0 万</div>
+        <div class="small">由 RevPAR 公式自动计算</div>
+      </div>
+    </div>
+
+    <div class="grid grid-4" style="margin-top:16px;">
+      <div class="card"><div class="label">触发方案</div><div class="value" id="trigger">A = B</div></div>
+      <div class="card"><div class="label">累计已分红</div><div class="value" id="dividends">0 万</div></div>
+      <div class="card"><div class="label">应付金额</div><div class="value" id="payout">0 万</div></div>
+      <div class="card"><div class="label">合伙人总收益</div><div class="value" id="total">0 万</div></div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:16px;">
+      <div class="card">
+        <div class="section-title">方案拆解</div>
+        <div class="rows">
+          <div class="row"><div class="muted">方案A总收益</div><div id="aTotal">0 万</div></div>
+          <div class="row"><div class="muted">方案A原始应付</div><div id="aPayoutRaw">0 万</div></div>
+          <div class="row"><div class="muted">方案A有效应付（低于0按0）</div><div id="aPayout">0 万</div></div>
+          <div class="row"><div class="muted">方案B倍数 n</div><div id="nValue">0</div></div>
+          <div class="row"><div class="muted">方案B原始应付</div><div id="bPayoutRaw">0 万</div></div>
+          <div class="row"><div class="muted">方案B有效应付（低于0按0）</div><div id="bPayout">0 万</div></div>
+          <div class="row"><div class="muted">最终触发</div><div id="finalTrigger">A = B</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">当前口径</div>
+        <div class="formula">
+          年净利润 = ((RevPAR / 0.88) × 110 × 365) × 1.03 × 94%<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;− 268.42 × 110 × 365<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;− 431718 × 12
+        </div>
+        <div class="small" style="margin-top:10px;">
+          1）公式原始结果按“元/年”计算，本工具会自动换算为“万元/年”。<br/>
+          2）合伙人主动退出：x 仅支持 3—5。<br/>
+          3）发起人主动回购：x 支持 3—20，且 n = max(5.5 - 0.5x, 2.5)。<br/>
+          4）两种情形下均取方案A与方案B中的较高者。<br/>
+          5）任一方案若计算结果低于0，则按0计；历史已分红不返还。
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="section-title">预设情景速览</div>
+      <div class="muted" id="table-subtitle" style="margin-bottom:14px;">当前表格会随模式与投资额联动更新</div>
+      <div id="tables"></div>
+    </div>
+  </div>
+
+  <script>
+    let mode = 'investor_exit';
+    let year = 3;
+
+    const el = (id) => document.getElementById(id);
+    const fmtWan = (n) => `${Number(n || 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 })} 万`;
+    const fmtPct = (n) => `${Number(n || 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 })}%`;
+
+    function annualProfitWanFromRevPAR(revpar) {
+      const annualYuan = (((revpar / 0.88) * 110 * 365) * 1.03 * 0.94) - (268.42 * 110 * 365) - (431718 * 12);
+      return annualYuan / 10000;
+    }
+
+    function clampYear(inputYear) {
+      let y = Number(inputYear || 3);
+      if (mode === 'investor_exit') {
+        if (y < 3) y = 3;
+        if (y > 5) y = 5;
+      } else {
+        if (y < 3) y = 3;
+        if (y > 20) y = 20;
+      }
+      return y;
+    }
+
+    function getYearOptions() {
+      return mode === 'investor_exit' ? [3, 4, 5] : [3, 4, 5, 6, 10, 15, 20];
+    }
+
+    function renderYearButtons() {
+      const container = el('yearButtons');
+      const options = getYearOptions();
+      container.innerHTML = options.map((y) => {
+        const active = Number(year) === y ? 'active' : '';
+        return `<button class="year-btn ${active}" data-year="${y}">第${y}年</button>`;
+      }).join('');
+      container.querySelectorAll('.year-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          year = Number(btn.dataset.year);
+          el('yearInput').value = year;
+          renderYearButtons();
+          updateMain();
+        });
+      });
+    }
+
+    function calc(mode, x, investmentWan, revpar) {
+      const annualProfitWan = annualProfitWanFromRevPAR(revpar);
+      const stakePercent = investmentWan / 50;
+      const stakeRatio = stakePercent / 100;
+
+      const dividends = annualProfitWan * stakeRatio * x;
+
+      const n = mode === 'investor_exit'
+        ? (5.25 - 0.75 * x)
+        : Math.max(5.5 - 0.5 * x, 2.5);
+
+      const aTotal = mode === 'investor_exit'
+        ? investmentWan + investmentWan * 0.05 * (1 + x)
+        : investmentWan + investmentWan * 0.10 * (1 + x);
+
+      const aPayoutRaw = aTotal - dividends;
+      const aPayout = Math.max(aPayoutRaw, 0);
+
+      const bPayoutRaw = annualProfitWan * n * stakeRatio;
+      const bPayout = Math.max(bPayoutRaw, 0);
+
+      const trigger = bPayout > aPayout ? '方案B' : bPayout < aPayout ? '方案A' : 'A = B';
+      const finalPayout = Math.max(aPayout, bPayout);
+      const totalReturn = dividends + finalPayout;
+
+      return {
+        annualProfitWan,
+        stakePercent,
+        stakeRatio,
+        dividends,
+        n,
+        aTotal,
+        aPayoutRaw,
+        aPayout,
+        bPayoutRaw,
+        bPayout,
+        trigger,
+        finalPayout,
+        totalReturn
+      };
+    }
+
+    function updateMain() {
+      year = clampYear(el('yearInput').value);
+      el('yearInput').value = year;
+
+      const investmentWan = Number(el('investment').value || 0);
+      const revpar = Number(el('revpar').value || 0);
+      const r = calc(mode, year, investmentWan, revpar);
+
+      el('stakePercent').textContent = fmtPct(r.stakePercent);
+      el('annualProfit').textContent = fmtWan(r.annualProfitWan);
+
+      el('trigger').textContent = r.trigger;
+      el('dividends').textContent = fmtWan(r.dividends);
+      el('payout').textContent = fmtWan(r.finalPayout);
+      el('total').textContent = fmtWan(r.totalReturn);
+
+      el('aTotal').textContent = fmtWan(r.aTotal);
+      el('aPayoutRaw').textContent = fmtWan(r.aPayoutRaw);
+      el('aPayout').textContent = fmtWan(r.aPayout);
+      el('nValue').textContent = r.n.toFixed(2);
+      el('bPayoutRaw').textContent = fmtWan(r.bPayoutRaw);
+      el('bPayout').textContent = fmtWan(r.bPayout);
+      el('finalTrigger').textContent = r.trigger;
+
+      renderYearButtons();
+    }
+
+    function renderTables() {
+      const revpars = [500, 550, 600, 650, 700];
+      const years = mode === 'investor_exit' ? [3, 4, 5] : [3, 4, 5, 6, 10, 15, 20];
+      const investmentWan = Number(el('investment').value || 0);
+
+      el('table-subtitle').textContent = `当前按“${mode === 'investor_exit' ? '合伙人主动退出' : '发起人主动回购'}”模式展示；投资额 ${investmentWan} 万元会联动影响表格结果`;
+
+      let html = '';
+      years.forEach((x) => {
+        html += `<div class="subhead">开业第${x}年 <span class="pill">x = ${x}</span></div>`;
+        html += `<table><thead><tr>
+          <th>RevPAR</th>
+          <th>净年利润</th>
+          <th>累计已分红</th>
+          <th>方案A有效应付</th>
+          <th>方案B有效应付</th>
+          <th>触发方案</th>
+          <th>最终应付</th>
+          <th>总收益</th>
+        </tr></thead><tbody>`;
+        revpars.forEach((revpar) => {
+          const r = calc(mode, x, investmentWan, revpar);
+          html += `<tr>
+            <td>${Number(revpar).toLocaleString('zh-CN')} 元</td>
+            <td>${fmtWan(r.annualProfitWan)}</td>
+            <td>${fmtWan(r.dividends)}</td>
+            <td>${fmtWan(r.aPayout)}</td>
+            <td>${fmtWan(r.bPayout)}</td>
+            <td>${r.trigger}</td>
+            <td>${fmtWan(r.finalPayout)}</td>
+            <td>${fmtWan(r.totalReturn)}</td>
+          </tr>`;
+        });
+        html += `</tbody></table>`;
+      });
+      el('tables').innerHTML = html;
+    }
+
+    document.getElementById('mode-exit').addEventListener('click', () => {
+      mode = 'investor_exit';
+      document.getElementById('mode-exit').classList.add('active');
+      document.getElementById('mode-buyback').classList.remove('active');
+      el('yearInput').min = 3;
+      el('yearInput').max = 5;
+      year = clampYear(year);
+      renderYearButtons();
+      renderTables();
+      updateMain();
+    });
+
+    document.getElementById('mode-buyback').addEventListener('click', () => {
+      mode = 'founder_buyback';
+      document.getElementById('mode-buyback').classList.add('active');
+      document.getElementById('mode-exit').classList.remove('active');
+      el('yearInput').min = 3;
+      el('yearInput').max = 20;
+      year = clampYear(year);
+      renderYearButtons();
+      renderTables();
+      updateMain();
+    });
+
+    el('yearInput').addEventListener('input', () => {
+      year = clampYear(el('yearInput').value);
+      updateMain();
+    });
+
+    document.querySelectorAll('.investment-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        el('investment').value = btn.textContent.trim();
+        renderTables();
+        updateMain();
+      });
+    });
+
+    document.querySelectorAll('.revpar-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        el('revpar').value = btn.textContent.trim();
+        renderTables();
+        updateMain();
+      });
+    });
+
+    el('investment').addEventListener('input', () => {
+      renderTables();
+      updateMain();
+    });
+
+    el('revpar').addEventListener('input', () => {
+      renderTables();
+      updateMain();
+    });
+
+    renderYearButtons();
+    renderTables();
+    updateMain();
+  </script>
+</body>
+</html>
