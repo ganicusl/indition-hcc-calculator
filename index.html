@@ -103,9 +103,14 @@
       </div>
 
       <div class="card">
-        <div class="label">自动生成净年利润</div>
+        <div class="label">自动生成项目总利润（年）</div>
         <div class="value" id="annualProfit">0 万</div>
         <div class="small">由 RevPAR 公式自动计算</div>
+        <div style="margin-top:14px; padding-top:14px; border-top:1px solid #f0f0f0;">
+          <div class="label" style="margin-bottom:6px;">对应收益权年收益</div>
+          <div class="value" id="annualReturn" style="font-size:22px;">0 万</div>
+          <div class="small">= 收益权份额 × 项目总利润（年）</div>
+        </div>
       </div>
     </div>
 
@@ -252,6 +257,7 @@
 
       el('stakePercent').textContent = fmtPct(r.stakePercent);
       el('annualProfit').textContent = fmtWan(r.annualProfitWan);
+      el('annualReturn').textContent = fmtWan(r.annualProfitWan * r.stakeRatio);
 
       el('trigger').textContent = r.trigger;
       el('dividends').textContent = fmtWan(r.dividends);
